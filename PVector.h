@@ -18,6 +18,7 @@ public:
     void normalize();
     PVector& setMag(float newMag);
     PVector copy() const;
+    static PVector scale(const PVector& center, const PVector& point, float scale);
 };
 
 #endif // PVECTOR_H

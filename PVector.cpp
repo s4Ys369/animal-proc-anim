@@ -49,3 +49,10 @@ PVector& PVector::setMag(float newMag) {
 PVector PVector::copy() const {
     return PVector(x, y);
 }
+
+// Function to scale a point outward from the center
+PVector PVector::scale(const PVector& center, const PVector& point, float scale) {
+    float dx = point.x - center.x;
+    float dy = point.y - center.y;
+    return PVector(center.x + dx * scale, center.y + dy * scale);
+}

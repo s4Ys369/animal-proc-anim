@@ -5,21 +5,40 @@
 
 // Wiggly lil dude
 Snake::Snake(PVector origin)
-    : spine(origin, 12, 12, M_PI / 8),
-      bodyWidth{3, 3, 4, 4, 4, 4, 3, 3, 3, 2, 2, 1} {}
+    : spine(origin, 16, 16, M_PI / 8),
+      bodyWidth{4.5, 7, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1} {}
       
+const float DEADZONE = 0.5f; // Define the deadzone threshold
+
+// Function to apply deadzone to a joystick axis input
+float apply_deadzone(float value) {
+  if (std::abs(value) < DEADZONE) {
+      return 0.0f; // Within deadzone, treat as zero
+  } else {
+    // Remap the value outside the deadzone
+    if (value > 0) {
+        return (value - DEADZONE) / (1.0f - DEADZONE);
+    } else {
+      return (value + DEADZONE) / (1.0f - DEADZONE);
+    }
+  }
+}
 
 void Snake::resolve(float mouseX, float mouseY) {
 
   PVector headPos = spine.joints[0];
   PVector targetPos = headPos;
 
+  // Apply deadzone to the joystick inputs
+  float adjustedX = apply_deadzone(mouseX);
+  float adjustedY = apply_deadzone(mouseY);
+
   // Normalize the joystick input to get the direction
-  PVector direction(mouseX, -mouseY);
+  PVector direction(adjustedX, -adjustedY);
   direction.normalize();
 
   // Determine the target position based on the direction and a fixed magnitude
-  float movementMag = 4.0;
+  float movementMag = 3.5;
   targetPos = PVector::add(headPos, direction.setMag(movementMag));
 
   spine.resolve(targetPos);
@@ -39,7 +58,7 @@ float Snake::getPosY(int i, float angleOffset, float lengthOffset) {
 }
 
 void Snake::draw_ellipse(float cx, float cy, float rx, float ry) {
-  const int segments = 10;
+  const int segments = 14;
   float theta = 2 * M_PI / float(segments);
   float cos_theta = cosf(theta);
   float sin_theta = sinf(theta);
@@ -76,8 +95,9 @@ void Snake::get_ellipse_points(float cx, float cy, float rx, float ry, int segme
 
 void Snake::draw_snake_shape() {
   size_t vertex_count = 0;
-  size_t max_vertices = spine.joints.size() * 2 + 6; // Adjust this as needed
-  float (*vertices)[2] = (float (*)[2])malloc(max_vertices * 2 * sizeof(float));
+  size_t max_vertices = spine.joints.size() * 2 + 8; // Adjust this as needed
+  debugf("%u", max_vertices);
+  PVector* vertices = (PVector*)malloc(max_vertices * sizeof(PVector));
     
   if (!vertices) {
     debugf("No vertices!");
@@ -85,67 +105,137 @@ void Snake::draw_snake_shape() {
   }
 
   // Right half of the snake
-  for (size_t i = 0; i < 12; i++) {
-    vertices[vertex_count][0] = getPosX(i, M_PI / 2, 0);
-    vertices[vertex_count][1] = getPosY(i, M_PI / 2, 0);
+  for (size_t i = 0; i < 14; i++) {
+    vertices[vertex_count].x = getPosX(i, M_PI / 2, 0);
+    vertices[vertex_count].y = getPosY(i, M_PI / 2, 0);
     vertex_count++;
   }
 
   // Top of the head (completes the loop)
-  vertices[vertex_count][0] = getPosX(11, M_PI, 0);
-  vertices[vertex_count][1] = getPosY(11, M_PI, 0);
+  vertices[vertex_count].x = getPosX(13, M_PI, 0);
+  vertices[vertex_count].y = getPosY(13, M_PI, 0);
   vertex_count++;
 
   // Left half of the snake
-  for (int i = 11; i >= 0; --i) {
-    vertices[vertex_count][0] = getPosX(i, -M_PI / 2, 0);
-    vertices[vertex_count][1] = getPosY(i, -M_PI / 2, 0);
+  for (int i = 13; i >= 0; --i) {
+    vertices[vertex_count].x = getPosX(i, -M_PI / 2, 0);
+    vertices[vertex_count].y = getPosY(i, -M_PI / 2, 0);
     vertex_count++;
   }
 
   // Add vertices to complete the loop
-  vertices[vertex_count][0] = getPosX(0, -M_PI / 6, 0);
-  vertices[vertex_count][1] = getPosY(0, -M_PI / 6, 0);
+  vertices[vertex_count].x = getPosX(0, -M_PI / 6, 0);
+  vertices[vertex_count].y = getPosY(0, -M_PI / 6, 0);
   vertex_count++;
-  vertices[vertex_count][0] = getPosX(0, 0, 0);
-  vertices[vertex_count][1] = getPosY(0, 0, 0);
+  vertices[vertex_count].x = getPosX(0, 0, 0);
+  vertices[vertex_count].y = getPosY(0, 0, 0);
   vertex_count++;
-  vertices[vertex_count][0] = getPosX(0, M_PI / 6, 0);
-  vertices[vertex_count][1] = getPosY(0, M_PI / 6, 0);
+  vertices[vertex_count].x = getPosX(0, M_PI / 6, 0);
+  vertices[vertex_count].y = getPosY(0, M_PI / 6, 0);
   vertex_count++;
 
-  // Set color
-  rdpq_set_prim_color(RED);
+  // Calculate the center of the shape
+  PVector center = { 0, 0 };
+  for (size_t i = 0; i < vertex_count; ++i) {
+      center.x += vertices[i].x;
+      center.y += vertices[i].y;
+  }
+  center.x /= vertex_count;
+  center.y /= vertex_count;
+
+  // Scale the vertices outward for outline
+  float e = 0.03f;
+  PVector scaled_vertices[max_vertices];
+  float scale = 1.0f + e;
+  for (size_t i = 0; i < vertex_count; ++i) {
+    scaled_vertices[i] = PVector::scale(center, vertices[i], scale);
+  }
 
   // Draw edges
   for (size_t i = 0; i < vertex_count - 2; ++i) {
-    rdpq_triangle(&TRIFMT_FILL, vertices[i], vertices[i + 1], vertices[i + 2]);
+
+    // cast PVector to float[] for `rdpq_triangle`
+    float v1[] = { vertices[i].x, vertices[i].y };
+    float v2[] = { vertices[i + 1].x, vertices[i + 1].y };
+    float v3[] = { vertices[i + 2].x, vertices[i + 2].y };
+
+    float v1S[] = { scaled_vertices[i].x, scaled_vertices[i].y };
+    float v2S[] = { scaled_vertices[i + 1].x, scaled_vertices[i + 1].y };
+    float v3S[] = { scaled_vertices[i + 2].x, scaled_vertices[i + 2].y };
+
+    // Set outline color and draw
+    rdpq_set_prim_color(BLACK); 
+    rdpq_triangle(&TRIFMT_FILL, v1S, v2S, v3S);
+
+    // Set edge color and draw
+    rdpq_set_prim_color(RED);
+    rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
   }
 
   std::vector<PVector> previous_points;
   std::vector<PVector> current_points;
+  float adjustedRadius = 0;
+
+  // Set body color
+  rdpq_set_prim_color(RED);
 
   // Draw joints
   for (size_t i = 0; i < spine.joints.size(); ++i) {
-    draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i));
-    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 10, current_points);
+    if(i < 2){
+      draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i));
+    } else {
+      adjustedRadius = getBodyWidth(i) - (i * 0.1f); // Taper width after second joint
+      draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), adjustedRadius, adjustedRadius);
+    }
+
+    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 14, current_points);
 
     if (!previous_points.empty()) {
-      // Create triangles between previous_points and current_points
-      for (int j = 0; j < 10; ++j) {
-        float v1[] = { previous_points[j].x, previous_points[j].y };
-        float v2[] = { previous_points[j + 1].x, previous_points[j + 1].y };
-        float v3[] = { current_points[j].x, current_points[j].y };
-        float v4[] = { current_points[j + 1].x, current_points[j + 1].y };
+
+      // Calculate centers for previous and current points
+      PVector prev_center = {0, 0};
+      PVector curr_center = {0, 0};
+      for (const auto& p : previous_points) {
+          prev_center.x += p.x;
+          prev_center.y += p.y;
+      }
+      for (const auto& p : current_points) {
+          curr_center.x += p.x;
+          curr_center.y += p.y;
+      }
+      prev_center.x /= previous_points.size();
+      prev_center.y /= previous_points.size();
+      curr_center.x /= current_points.size();
+      curr_center.y /= current_points.size();
+      
+      // Scale points outward to fill in any gaps
+      e = 0.2f;
+      float scale = 1.0f + e;
+      for (int j = 0; j < 14; ++j) {
+        PVector v1r = PVector::scale(prev_center, previous_points[j], scale);
+        PVector v2r = PVector::scale(prev_center, previous_points[j + 1], scale);
+        PVector v3r = PVector::scale(curr_center, current_points[j], scale);
+        PVector v4r = PVector::scale(curr_center, current_points[j + 1], scale);
+
+        // Create triangles between scaled points
+        float v1f[] = { v1r.x, v1r.y };
+        float v2f[] = { v2r.x, v2r.y };
+        float v3f[] = { v3r.x, v3r.y };
+        float v4f[] = { v4r.x, v4r.y };
 
         // Draw two triangles to form a quad between the points
-        rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
-        rdpq_triangle(&TRIFMT_FILL, v2, v4, v3);
+        rdpq_triangle(&TRIFMT_FILL, v1f, v2f, v3f);
+        rdpq_triangle(&TRIFMT_FILL, v2f, v4f, v3f);
       }
     }
 
     previous_points = current_points; // Save current points for the next iteration
   }
+
+  // Draw eye outline
+  rdpq_set_prim_color(DARK_GREEN);
+  draw_ellipse(getPosX(0, M_PI / 2, -1), getPosY(0, M_PI / 2, -1), 1.5, 1.5);
+  draw_ellipse(getPosX(0, -M_PI / 2, -1), getPosY(0, -M_PI / 2, -1), 1.5, 1.5);
 
   // Draw eyes
   rdpq_set_prim_color(GREEN);
