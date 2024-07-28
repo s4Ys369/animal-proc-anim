@@ -62,7 +62,7 @@ void Snake::draw_ellipse(float cx, float cy, float rx, float ry) {
   }
 }
 
-// Function to draw a filled ellipse by generating points around it
+// Function get points around an ellipse
 void Snake::get_ellipse_points(float cx, float cy, float rx, float ry, int segments, std::vector<PVector>& points) {
   points.clear(); // Clear the vector to store new points
   for (int i = 0; i <= segments; ++i) {
