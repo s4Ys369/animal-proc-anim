@@ -62,6 +62,17 @@ void Snake::draw_ellipse(float cx, float cy, float rx, float ry) {
   }
 }
 
+// Function to draw a filled ellipse by generating points around it
+void Snake::get_ellipse_points(float cx, float cy, float rx, float ry, int segments, std::vector<PVector>& points) {
+  points.clear(); // Clear the vector to store new points
+  for (int i = 0; i <= segments; ++i) {
+      float theta = 2.0f * M_PI * float(i) / float(segments);
+      float x = rx * cosf(theta);
+      float y = ry * sinf(theta);
+      points.push_back({cx + x, cy + y});
+  }
+}
+
 
 void Snake::draw_snake_shape() {
   size_t vertex_count = 0;
@@ -111,9 +122,29 @@ void Snake::draw_snake_shape() {
     rdpq_triangle(&TRIFMT_FILL, vertices[i], vertices[i + 1], vertices[i + 2]);
   }
 
+  std::vector<PVector> previous_points;
+  std::vector<PVector> current_points;
+
   // Draw joints
   for (size_t i = 0; i < spine.joints.size(); ++i) {
     draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i));
+    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 10, current_points);
+
+    if (!previous_points.empty()) {
+      // Create triangles between previous_points and current_points
+      for (int j = 0; j < 10; ++j) {
+        float v1[] = { previous_points[j].x, previous_points[j].y };
+        float v2[] = { previous_points[j + 1].x, previous_points[j + 1].y };
+        float v3[] = { current_points[j].x, current_points[j].y };
+        float v4[] = { current_points[j + 1].x, current_points[j + 1].y };
+
+        // Draw two triangles to form a quad between the points
+        rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+        rdpq_triangle(&TRIFMT_FILL, v2, v4, v3);
+      }
+    }
+
+    previous_points = current_points; // Save current points for the next iteration
   }
 
   // Draw eyes
