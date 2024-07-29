@@ -3,6 +3,7 @@
 #include "Snake.h"
 #include "Utils.h"
 
+int TC = 0;
 // Wiggly lil dude
 Snake::Snake(PVector origin)
     : spine(origin, 16, 16, M_PI / 8),
@@ -59,6 +60,7 @@ void Snake::draw_ellipse(float cx, float cy, float rx, float ry) {
       float v3[] = { cx + next_x, cy + next_y };
 
       rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+      TC++;
 
       x = next_x;
       y = next_y;
@@ -80,13 +82,11 @@ void Snake::get_ellipse_points(float cx, float cy, float rx, float ry, int segme
 void Snake::draw_snake_shape() {
   size_t vertex_count = 0;
   size_t max_vertices = spine.joints.size() * 2 + 8; // Adjust this as needed
-  debugf("%u", max_vertices);
+  //debugf("%u", max_vertices);
   PVector* vertices = (PVector*)malloc(max_vertices * sizeof(PVector));
-
-  rdpq_sync_pipe();
     
   if (!vertices) {
-    debugf("No vertices!");
+    //debugf("No vertices!");
     return;
   }
 
@@ -152,10 +152,12 @@ void Snake::draw_snake_shape() {
     // Set outline color and draw
     rdpq_set_prim_color(BLACK); 
     rdpq_triangle(&TRIFMT_FILL, v1S, v2S, v3S);
+    TC++;
 
     // Set edge color and draw
     rdpq_set_prim_color(RED);
     rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+    TC++;
   }
 
   std::vector<PVector> previous_points;
@@ -212,6 +214,7 @@ void Snake::draw_snake_shape() {
         // Draw two triangles to form a quad between the points
         rdpq_triangle(&TRIFMT_FILL, v1f, v2f, v3f);
         rdpq_triangle(&TRIFMT_FILL, v2f, v4f, v3f);
+        TC += 2;
       }
     }
 
@@ -230,4 +233,9 @@ void Snake::draw_snake_shape() {
 
   // Free vertices after drawing
   free(vertices);
+  current_points.clear();
+  previous_points.clear();
+
+  //debugf("%u\n", TC);
+  TC = 0;
 }
