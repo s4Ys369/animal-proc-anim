@@ -94,11 +94,12 @@ int main() {
       mousePressed();
     }
 
+    draw();
+
     if(keysDown.b){
       debugSpine->display();
     }
 
-    draw();
 
     rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 220, "FPS: %.2f", display_get_fps());
 

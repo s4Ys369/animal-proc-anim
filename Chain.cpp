@@ -66,7 +66,7 @@ void Chain::draw_line(float x1, float y1, float x2, float y2) {
 
 void Chain::display() {
     
-    rdpq_set_prim_color(BLUE);
+    rdpq_set_prim_color(BLACK);
 
     // Draw lines between joints
     for (size_t i = 0; i < joints.size() - 1; ++i) {

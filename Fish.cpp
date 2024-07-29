@@ -100,7 +100,7 @@ float Fish::get_tail_width(int i, float headToTail) {
 
 // Function to draw a curve using triangle fan
 void Fish::draw_curve(const std::vector<PVector>& points) {
-  const int segments = 5; // Adjust segments as needed
+  const int segments = 7; // Adjust segments as needed
 
   if (points.size() < 2) return; // Not enough points to draw a curve
 
@@ -408,7 +408,7 @@ void Fish::draw_body() {
       draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), adjustedRadius, adjustedRadius);
     }
 
-    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 10, current_points);
+    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 14, current_points);
 
     if (!previous_points.empty()) {
       // Calculate centers for previous and current points
@@ -430,7 +430,7 @@ void Fish::draw_body() {
       // Scale points outward to fill in any gaps
       float e = 0.1f;
       float scale = 1.0f + e;
-      for (int j = 0; j < 10; ++j) {
+      for (int j = 0; j < 14; ++j) {
         PVector v1r = PVector::scale(prev_center, previous_points[j], scale);
         PVector v2r = PVector::scale(prev_center, previous_points[j + 1], scale);
         PVector v3r = PVector::scale(curr_center, current_points[j], scale);
@@ -461,7 +461,7 @@ void Fish::draw_body() {
 void Fish::display() {
   rdpq_sync_pipe();
 
-  rdpq_set_mode_fill(finColor);
+  rdpq_set_prim_color(finColor);
 
   // Alternate labels for shorter lines of code
   std::vector<PVector> j = spine.joints;
@@ -520,7 +520,7 @@ void Fish::display() {
 
   // === START BODY ===
   
-  rdpq_set_mode_fill(bodyColor);
+  rdpq_set_prim_color(bodyColor);
 
   // Draw the body
   draw_body();
@@ -530,10 +530,7 @@ void Fish::display() {
 
   // === START DORSAL FIN ===
 
-  rdpq_set_mode_fill(finColor);
-
-  // Draw base line for the bezier curve
-  draw_bezier_curve(j[2], j[3], j[4], j[5], 1);
+  rdpq_set_prim_color(finColor);
 
   //Transform the points for the outside
   PVector j4 = {j[4].x + cosf(a[4] + M_PI/2) * headToMid2 * 8,
@@ -541,7 +538,9 @@ void Fish::display() {
   PVector j3 = {j[3].x + cosf(a[3] + M_PI/2) * headToMid2 * 8,
                 j[3].y + sinf(a[3] + M_PI/2) * headToMid2 * 8,};
 
-  draw_filled_bezier_shape(j[5], j4, j3, j[2], 5); // Draw curve and fill as we go
+  draw_bezier_curve(j[5], j4, j3, j[2], 7); // Draw outside curve
+
+  draw_bezier_curve(j[2], j[3], j[4], j[5], 5); // Draw base curve
 
   // === END DORSAL FIN ===
 
