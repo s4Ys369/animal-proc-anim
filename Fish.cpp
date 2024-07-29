@@ -5,10 +5,10 @@
 
 
 Fish::Fish(PVector origin)
-  : spine(origin, 12, 12, M_PI / 8),
+  : spine(origin, 12, 8, M_PI / 8),
     bodyColor(BLUE),
     finColor(RED),
-    bodyWidth{3.2f, 4.0f, 4.2f, 3.8f, 3.4f, 3.2f, 1.8f, 1.0f,0,0} {}
+    bodyWidth{3.2f, 7.0f, 8.0f, 7.0f, 6.0f, 5.0f, 4.0f, 3.0f, 2.0f ,1.0f} {}
 
 void Fish::resolve(float mouseX, float mouseY) {
   PVector headPos = spine.joints[0];
@@ -36,6 +36,10 @@ float Fish::getPosX(int i, float angleOffset, float lengthOffset) {
 
 float Fish::getPosY(int i, float angleOffset, float lengthOffset) {
   return spine.joints[i].y + sinf(spine.angles[i] + angleOffset) * (bodyWidth[i] + lengthOffset);
+}
+
+float Fish::getBodyWidth(int i) {
+  return bodyWidth[i];
 }
 
 void Fish::draw_ellipse(float cx, float cy, float rx, float ry) {
@@ -75,9 +79,9 @@ void Fish::get_ellipse_points(float cx, float cy, float rx, float ry, int segmen
 
 void Fish::draw_fin(float posX, float posY, float rotation, float width, float height) {
   // Apply transformations
-  PVector origin = spine.joints[6];
+  PVector origin = {0,0};
   origin = PVector::translate(origin, posX, posY);
-  origin = PVector::rotate(origin, rotation);
+  origin = PVector::transform(origin, rotation, width);
 
   // Draw the ellipse at the transformed position
   draw_ellipse(origin.x, origin.y, width, height);
@@ -88,7 +92,7 @@ float Fish::get_tail_width(int i, float headToTail) {
   if (i < 12) {
     return 0.05f * headToTail * (i - 8) * (i - 8);
   }
-  return fmaxf(-0.05f, fminf(0.05f, headToTail * 6));
+  return fmaxf(-0.5f, fminf(0.5f, headToTail));
 }
 
 // Function to draw a curve using triangle fan
@@ -195,6 +199,105 @@ void Fish::draw_bezier_curve(const PVector& p0, const PVector& p1, const PVector
   }
 }
 
+bool Fish::is_ear(const std::vector<PVector>& polygon, int u, int v, int w, const std::vector<int>& V) {
+  const PVector& A = polygon[V[u]];
+  const PVector& B = polygon[V[v]];
+  const PVector& C = polygon[V[w]];
+
+  if (PVector::epsilon_test(A, B, C) >= 0) {
+    return false;
+  }
+
+  for (size_t p = 0; p < polygon.size(); ++p) {
+    if ((p == static_cast<size_t>(u)) || (p == static_cast<size_t>(v)) || (p == static_cast<size_t>(w))) {
+      continue;
+    }
+    if (PVector::point_in_triangle(polygon[p], A, B, C)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void Fish::triangulate_polygon(const std::vector<PVector>& polygon, std::vector<PVector>& triangles) {
+  // A simple ear clipping algorithm for triangulation
+  std::vector<int> V(polygon.size());
+  for (size_t i = 0; i < polygon.size(); ++i) {
+    V[i] = i;
+  }
+
+  int n = polygon.size();
+  int count = 2 * n;
+
+  for (int v = n - 1; n > 2;) {
+    if ((count--) <= 0) {
+      debugf("OH NO!\n");
+      return;
+    }
+
+    int u = v;
+    if (n <= u) {
+      u = 0;
+    }
+    v = u + 1;
+    if (n <= v) {
+      v = 0;
+    }
+    int w = v + 1;
+    if (n <= w) {
+      w = 0;
+    }
+
+    int a = V[u], b = V[v], c = V[w];
+    triangles.push_back(polygon[a]);
+    triangles.push_back(polygon[b]);
+    triangles.push_back(polygon[c]);
+
+    for (int s = v, t = v + 1; t < n; s++, t++) {
+      V[s] = V[t];
+    }
+    n--;
+
+    count = 2 * n;
+  }
+}
+
+void Fish::draw_filled_bezier_shape(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments) {
+  std::vector<PVector> curvePoints;
+
+  // Compute Bézier curve points
+  for (int i = 0; i <= segments; ++i) {
+    float t = float(i) / float(segments);
+    float u = 1 - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
+
+    PVector p = { uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+                  uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y };
+
+    curvePoints.push_back(p);
+  }
+
+  // Close the polygon by connecting the last point back to the first
+  curvePoints.push_back(curvePoints[0]);
+
+  // Triangulate the closed polygon (using a simple ear clipping method)
+  std::vector<PVector> triangles;
+  triangulate_polygon(curvePoints, triangles);
+
+  // Draw the triangles
+  for (size_t i = 0; i < triangles.size(); i += 3) {
+    float v1[] = { triangles[i].x, triangles[i].y };
+    float v2[] = { triangles[i + 1].x, triangles[i + 1].y };
+    float v3[] = { triangles[i + 2].x, triangles[i + 2].y };
+
+    rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+  }
+}
+
 void Fish::draw_tail(const std::vector<PVector>& j, const std::vector<float>& a, float headToTail) {
     std::vector<PVector> bottomPoints;
     std::vector<PVector> topPoints;
@@ -218,51 +321,127 @@ void Fish::draw_tail(const std::vector<PVector>& j, const std::vector<float>& a,
     draw_curve(bottomPoints); // Draw the shape
 }
 
+
+PVector* vertices;
 void Fish::draw_body() {
-  const int segments = 10; // Number of segments to approximate the curve
-
-  // Prepare a list of points
-  std::vector<PVector> points;
-
-  // Right half of the fish
-  for (int i = 0; i < segments; ++i) {
-    float x = getPosX(i, M_PI/2, 0);
-    float y = getPosY(i, M_PI/2, 0);
-    points.push_back({x, y});
+  size_t vertex_count = 0;
+  size_t max_vertices = spine.joints.size(); // Adjust this as needed
+  vertices = (PVector*)malloc(max_vertices * sizeof(PVector));
+  debugf("%u\n", max_vertices);
+    
+  if (!vertices) {
+    debugf("No vertices!\n");
+    return;
   }
 
-  // Bottom of the fish
-  points.push_back({getPosX(9, M_PI, 0), getPosY(9, M_PI, 0)});
-
-    // Left half of the fish
-  for (int i = 9; i >= 0; --i) {
-    float x = getPosX(i, -M_PI/2, 0);
-    float y = getPosY(i, -M_PI/2, 0);
-    points.push_back({x, y});
+  // Right half of the fish
+  for (size_t i = 0; i < 10; i++) {
+    vertices[vertex_count].x = getPosX(i, M_PI / 2, 0);
+    vertices[vertex_count].y = getPosY(i, M_PI / 2, 0);
+    vertex_count++;
+    debugf("%u\n", vertex_count);
   }
 
   // Top of the head (completes the loop)
-  points.push_back({getPosX(0, -M_PI/6, 0), getPosY(0, -M_PI/6, 0)});
-  points.push_back({getPosX(0, 0, 4), getPosY(0, 0, 4)});
-  points.push_back({getPosX(0, M_PI/6, 0), getPosY(0, M_PI/6, 0)});
+  vertices[vertex_count].x = getPosX(9, M_PI, 0);
+  vertices[vertex_count].y = getPosY(9, M_PI, 0);
+  vertex_count++;
+  debugf("%u\n", vertex_count);
 
-  // Some overlap needed because curveVertex requires extra vertices that are not rendered
-  points.push_back({getPosX(0, M_PI/2, 0), getPosY(0, M_PI/2, 0)});
-  points.push_back({getPosX(1, M_PI/2, 0), getPosY(1, M_PI/2, 0)});
-  points.push_back({getPosX(2, M_PI/2, 0), getPosY(2, M_PI/2, 0)});
+  // Left half of the fish
+  for (int i = 9; i >= 0; --i) {
+    vertices[vertex_count].x = getPosX(i, -M_PI / 2, 0);
+    vertices[vertex_count].y = getPosY(i, -M_PI / 2, 0);
+    vertex_count++;
+    debugf("%u\n", vertex_count);
+  }
 
-  // Draw the shape using triangles
-  // Assumes a triangle strip or fan method
-  for (size_t i = 0; i < points.size() - 2; ++i) {
-    // cast PVector to float[] for `rdpq_triangle`
-    float v1[] = { points[i].x, points[i].y };
-    float v2[] = { points[i + 1].x, points[i + 1].y };
-    float v3[] = { points[i + 2].x, points[i + 2].y };
+  // Add vertices to complete the loop
+  vertices[vertex_count].x = getPosX(0, -M_PI / 6, 0);
+  vertices[vertex_count].y = getPosY(0, -M_PI / 6, 0);
+  vertex_count++;
+  debugf("%u\n", vertex_count);
+  vertices[vertex_count].x = getPosX(0, 0, 0);
+  vertices[vertex_count].y = getPosY(0, 0, 0);
+  vertex_count++;
+  debugf("%u\n", vertex_count);
+  vertices[vertex_count].x = getPosX(0, M_PI / 6, 0);
+  vertices[vertex_count].y = getPosY(0, M_PI / 6, 0);
+  vertex_count++;
+  debugf("%u\n", vertex_count);
+
+  // Draw edges
+  for (size_t i = 0; i < vertex_count - 2; ++i) {
+    // Cast PVector to float[] for `rdpq_triangle`
+    float v1[] = { vertices[i].x, vertices[i].y };
+    float v2[] = { vertices[i + 1].x, vertices[i + 1].y };
+    float v3[] = { vertices[i + 2].x, vertices[i + 2].y };
+
     rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
   }
+
+  std::vector<PVector> previous_points;
+  std::vector<PVector> current_points;
+  float adjustedRadius = 0;
+
+  // Draw joints
+  for (size_t i = 0; i < spine.joints.size() - 2; ++i) {
+    if (i < 2) {
+      draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i));
+    } else { // Don't draw the last two tail joints
+      adjustedRadius = getBodyWidth(i) - (i * 0.1f); // Taper width after second joint
+      draw_ellipse(getPosX(i, 0, 0), getPosY(i, 0, 0), adjustedRadius, adjustedRadius);
+    }
+
+    get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 14, current_points);
+
+    if (!previous_points.empty()) {
+      // Calculate centers for previous and current points
+      PVector prev_center = {0, 0};
+      PVector curr_center = {0, 0};
+      for (const auto& p : previous_points) {
+        prev_center.x += p.x;
+        prev_center.y += p.y;
+      }
+      for (const auto& p : current_points) {
+        curr_center.x += p.x;
+        curr_center.y += p.y;
+      }
+      prev_center.x /= previous_points.size();
+      prev_center.y /= previous_points.size();
+      curr_center.x /= current_points.size();
+      curr_center.y /= current_points.size();
+      
+      // Scale points outward to fill in any gaps
+      float e = 0.1f;
+      float scale = 1.0f + e;
+      for (int j = 0; j < 14; ++j) {
+        PVector v1r = PVector::scale(prev_center, previous_points[j], scale);
+        PVector v2r = PVector::scale(prev_center, previous_points[j + 1], scale);
+        PVector v3r = PVector::scale(curr_center, current_points[j], scale);
+        PVector v4r = PVector::scale(curr_center, current_points[j + 1], scale);
+
+        // Create triangles between scaled points
+        float v1f[] = { v1r.x, v1r.y };
+        float v2f[] = { v2r.x, v2r.y };
+        float v3f[] = { v3r.x, v3r.y };
+        float v4f[] = { v4r.x, v4r.y };
+
+        // Draw two triangles to form a quad between the points
+        rdpq_triangle(&TRIFMT_FILL, v1f, v2f, v3f);
+        rdpq_triangle(&TRIFMT_FILL, v2f, v4f, v3f);
+      }
+    }
+
+    
+
+    previous_points = current_points; // Save current points for the next iteration
+  }
+  free(vertices);
 }
 
 void Fish::display() {
+  rdpq_sync_pipe();
 
   rdpq_set_mode_fill(finColor);
 
@@ -271,8 +450,8 @@ void Fish::display() {
   std::vector<float> a = spine.angles;
 
   // Relative angle differences are used in some hacky computation for the dorsal fin
-  float headToMid1 = relativeAngleDiff(a[0], a[6]);
-  float headToMid2 = relativeAngleDiff(a[0], a[7]);
+  float headToMid1 = relativeAngleDiff(a[0], a[4]);
+  float headToMid2 = relativeAngleDiff(a[0], a[5]);
 
   // For the caudal fin, we need to compute the relative angle difference from the head to the tail, but given
   // a joint count of 12 and angle constraint of PI/8, the maximum difference between head and tail is 11PI/8,
@@ -284,16 +463,16 @@ void Fish::display() {
   // === START PECTORAL FINS ===
 
   // Drawing the right fin
-  float xPosRight_pec = getPosX(3, M_PI / 3, 0);
-  float yPosRight_pec = getPosY(3, M_PI / 3, 0);
-  float angleRight_pec = a[2] - M_PI / 4;
-  draw_fin(xPosRight_pec, yPosRight_pec, angleRight_pec, 10.0f, 4.0f);
+  float xPosRight_pec = getPosX(4, M_PI / 3, 0);
+  float yPosRight_pec = getPosY(4, M_PI / 3, 0);
+  float angleRight_pec = a[3] - M_PI / 4;
+  draw_fin(xPosRight_pec, yPosRight_pec, angleRight_pec, 10.0f, 3.0f);
 
   // Drawing the left fin
-  float xPosLeft_pec = getPosX(3, -M_PI / 3, 0);
-  float yPosLeft_pec = getPosY(3, -M_PI / 3, 0);
-  float angleLeft_pec = a[2] + M_PI / 4;
-  draw_fin(xPosLeft_pec, yPosLeft_pec, angleLeft_pec, 10.0f, 4.0f);
+  float xPosLeft_pec = getPosX(4, -M_PI / 3, 0);
+  float yPosLeft_pec = getPosY(4, -M_PI / 3, 0);
+  float angleLeft_pec = a[3] + M_PI / 4;
+  draw_fin(xPosLeft_pec, yPosLeft_pec, angleLeft_pec, 10.0f, 3.0f);
   // === END PECTORAL FINS ===
 
   // === START VENTRAL FINS ===
@@ -302,20 +481,20 @@ void Fish::display() {
   float xPosRight_ven = getPosX(7, M_PI / 2, 0);
   float yPosRight_ven = getPosY(7, M_PI / 2, 0);
   float angleRight_ven = a[6] - M_PI / 4;
-  draw_fin(xPosRight_ven, yPosRight_ven, angleRight_ven, 7.0f, 2.0f);
+  draw_fin(xPosRight_ven, yPosRight_ven, angleRight_ven, 6.0f, 2.0f);
 
   // Drawing the left fin
   float xPosLeft_ven = getPosX(7, -M_PI / 2, 0);
   float yPosLeft_ven = getPosY(7, -M_PI / 2, 0);
   float angleLeft_ven = a[6] + M_PI / 4;
-  draw_fin(xPosLeft_ven, yPosLeft_ven, angleLeft_ven, 7.0f, 2.0f);
+  draw_fin(xPosLeft_ven, yPosLeft_ven, angleLeft_ven, 6.0f, 2.0f);
 
   // === END VENTRAL FINS ===
 
   // === START CAUDAL FINS ===
 
   // Draw the tail
-  //draw_tail(j, a, headToTail);
+  draw_tail(j, a, headToTail);
 
   // === END CAUDAL FINS ===
 
@@ -332,16 +511,16 @@ void Fish::display() {
 
   // === START DORSAL FIN ===
 
-  // Draw Bezier curve for dorsal fin
-  draw_bezier_curve(j[4], j[5], j[6], j[7], 16); // Right
+  // Draw base line for the bezier curve
+  draw_bezier_curve(j[2], j[3], j[4], j[5], 16);
 
-  //Transform the points for the left side
-  PVector j5 = {j[5].x + cosf(a[5] + M_PI/2) * headToMid2 * 16,
-                j[5].y + sinf(a[5] + M_PI/2) * headToMid2 * 16,};
-  PVector j6 = {j[6].x + cosf(a[6] + M_PI/2) * headToMid2 * 16,
-                j[6].y + sinf(a[6] + M_PI/2) * headToMid2 * 16,};
+  //Transform the points for the outside
+  PVector j4 = {j[4].x + cosf(a[4] + M_PI/2) * headToMid2 * 8,
+                j[4].y + sinf(a[4] + M_PI/2) * headToMid2 * 8,};
+  PVector j3 = {j[3].x + cosf(a[3] + M_PI/2) * headToMid2 * 8,
+                j[3].y + sinf(a[3] + M_PI/2) * headToMid2 * 8,};
 
-  draw_bezier_curve(j[7], j6, j5, j[4], 16); // Left
+  draw_filled_bezier_shape(j[5], j4, j3, j[2], 16); // Draw curve and fill as we go
 
   // === END DORSAL FIN ===
 

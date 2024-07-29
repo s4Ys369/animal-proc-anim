@@ -22,6 +22,8 @@ public:
     static PVector translate(PVector p, float dx, float dy);
     static PVector rotate(PVector p, float angle);
     static PVector transform(const PVector& point, float angle, float width);
+    static float epsilon_test(const PVector& A, const PVector& B, const PVector& C);
+    static bool point_in_triangle(const PVector& P, const PVector& A, const PVector& B, const PVector& C);
 };
 
 #endif // PVECTOR_H

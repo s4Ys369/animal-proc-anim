@@ -80,3 +80,22 @@ PVector PVector::transform(const PVector& point, float angle, float width) {
     transformed.y = point.y + sinf(angle) * width;
     return transformed;
 }
+
+float PVector::epsilon_test(const PVector& A, const PVector& B, const PVector& C) {
+  return (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
+}
+
+bool PVector::point_in_triangle(const PVector& P, const PVector& A, const PVector& B, const PVector& C) {
+  float ax = C.x - B.x, ay = C.y - B.y;
+  float bx = A.x - C.x, by = A.y - C.y;
+  float cx = B.x - A.x, cy = B.y - A.y;
+  float apx = P.x - A.x, apy = P.y - A.y;
+  float bpx = P.x - B.x, bpy = P.y - B.y;
+  float cpx = P.x - C.x, cpy = P.y - C.y;
+
+  float aCROSSbp = ax * bpy - ay * bpx;
+  float cCROSSap = cx * apy - cy * apx;
+  float bCROSScp = bx * cpy - by * cpx;
+
+  return ((aCROSSbp >= 0) && (bCROSScp >= 0) && (cCROSSap >= 0));
+}

@@ -26,7 +26,7 @@ void setup() {
   disp = surface_alloc(FMT_RGBA16, display_get_width(), display_get_height());
 
   rdpq_init();
-  rdpq_debug_start();
+  //rdpq_debug_start();
 
   joypad_init();
 
@@ -99,7 +99,9 @@ int main() {
       debugSpine->display();
     }
 
+    //rdpq_mode_begin();
     rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 220, "FPS: %.2f", display_get_fps());
+    //rdpq_mode_end();
 
     rdpq_detach_show();
   }

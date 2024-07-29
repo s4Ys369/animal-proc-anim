@@ -82,6 +82,8 @@ void Snake::draw_snake_shape() {
   size_t max_vertices = spine.joints.size() * 2 + 8; // Adjust this as needed
   debugf("%u", max_vertices);
   PVector* vertices = (PVector*)malloc(max_vertices * sizeof(PVector));
+
+  rdpq_sync_pipe();
     
   if (!vertices) {
     debugf("No vertices!");

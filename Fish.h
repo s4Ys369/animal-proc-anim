@@ -15,6 +15,7 @@ public:
 
     Fish(PVector origin);
     void resolve(float mouseX, float mouseY);
+    float getBodyWidth(int i);
     void display();
 
 private:
@@ -27,6 +28,9 @@ private:
     void draw_curve(const std::vector<PVector>& points);
     void draw_line(float x1, float y1, float x2, float y2, float thickness);
     void draw_bezier_curve(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments);
+    bool is_ear(const std::vector<PVector>& polygon, int u, int v, int w, const std::vector<int>& V);
+    void triangulate_polygon(const std::vector<PVector>& polygon, std::vector<PVector>& triangles);
+    void draw_filled_bezier_shape(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments);
     void draw_tail(const std::vector<PVector>& j, const std::vector<float>& a, float headToTail);
     void draw_body();
 };
