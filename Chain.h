@@ -19,6 +19,7 @@ public:
     void fabrikResolve(PVector pos, PVector anchor);
 
     void draw_line(float x1, float y1, float x2, float y2);
+    void draw_ellipse(float cx, float cy, float rx, float ry);
     void display();
 };
 

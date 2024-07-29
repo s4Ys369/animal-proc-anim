@@ -40,6 +40,7 @@ void Chain::fabrikResolve(PVector pos, PVector anchor) {
         joints[i] = constrainDistance(joints[i], joints[i + 1], linkSize);
     }
 }
+
 void Chain::draw_line(float x1, float y1, float x2, float y2) {
     // Convert the line into a thin rectangle (a series of triangles)
     const float thickness = 4.0f; // Adjust this value as needed for strokeWeight
@@ -64,14 +65,41 @@ void Chain::draw_line(float x1, float y1, float x2, float y2) {
     rdpq_triangle(&TRIFMT_FILL, v2, v3, v4);
 }
 
+void Chain::draw_ellipse(float cx, float cy, float rx, float ry) {
+  const int segments = 10;
+  float theta = 2 * M_PI / float(segments);
+  float cos_theta = cosf(theta);
+  float sin_theta = sinf(theta);
+
+  float x = rx;
+  float y = 0;
+
+  for (int i = 0; i < segments; ++i) {
+    float next_x = cos_theta * x - sin_theta * y;
+    float next_y = sin_theta * x + cos_theta * y;
+
+    float v1[] = { cx, cy };
+    float v2[] = { cx + x, cy + y };
+    float v3[] = { cx + next_x, cy + next_y };
+
+    rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+
+    x = next_x;
+    y = next_y;
+  }
+}
+
 void Chain::display() {
-    
-    rdpq_set_prim_color(BLACK);
 
     // Draw lines between joints
     for (size_t i = 0; i < joints.size() - 1; ++i) {
         PVector startJoint = joints[i];
         PVector endJoint = joints[i + 1];
+        rdpq_set_prim_color(BLACK);
         draw_line(startJoint.x, startJoint.y, endJoint.x, endJoint.y);
+        rdpq_set_prim_color(BLACK);
+        draw_ellipse(joints[i].x, joints[i].y, 4.0f, 1.0f);
+        rdpq_set_prim_color(YELLOW);
+        draw_ellipse(joints[i].x, joints[i].y, 3.0f, 1.0f);
     }
 }

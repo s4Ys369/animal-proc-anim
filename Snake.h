@@ -5,6 +5,8 @@
 #include "Chain.h"
 #include "Utils.h"
 
+extern int TC; // Snake's tri count
+
 
 class Snake {
 public:

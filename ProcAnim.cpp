@@ -100,6 +100,16 @@ int main() {
       debugSpine->display();
     }
 
+    switch(animal){
+      case 0:
+        rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 200, "Tris: %u", TC);
+        TC = 0;
+        break;
+      case 1:
+        rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 200, "Tris: %u", triCount);
+        triCount = 0;
+        break;
+    }
 
     rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 220, "FPS: %.2f", display_get_fps());
 

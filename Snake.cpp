@@ -237,5 +237,5 @@ void Snake::draw_snake_shape() {
   previous_points.clear();
 
   //debugf("%u\n", TC);
-  TC = 0;
+  //TC = 0;
 }

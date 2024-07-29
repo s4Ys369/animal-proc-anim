@@ -6,7 +6,7 @@
 int triCount = 0;
 
 Fish::Fish(PVector origin)
-  : spine(origin, 12, 8, M_PI / 8),
+  : spine(origin, 12, 6, M_PI / 8),
     bodyColor(BLUE),
     finColor(RED),
     bodyWidth{3.2f, 7.0f, 8.0f, 7.0f, 6.0f, 5.0f, 4.0f, 3.0f, 2.0f ,1.0f} {}
@@ -22,6 +22,17 @@ void Fish::resolve(float mouseX, float mouseY) {
   // Normalize the joystick input to get the direction
   PVector direction(adjustedX, -adjustedY);
   direction.normalize();
+
+  // Limit fish movement to inside screen with offset
+  float offset = 32.0f;
+  float width = display_get_width();
+  float height = display_get_height();
+  PVector center = {160.0f,120.f};
+
+  if(headPos.x < offset){headPos.x = offset; targetPos = center;}
+  if(headPos.x > width - offset){headPos.x = width - offset; targetPos = center;}
+  if(headPos.y < offset){headPos.y = offset; targetPos = center;}
+  if(headPos.y > height - offset){headPos.y = height - offset; targetPos = center;}
 
   // Determine the target position based on the direction and a fixed magnitude
   float movementMag = 3.5;
@@ -68,7 +79,7 @@ void Fish::draw_ellipse(float cx, float cy, float rx, float ry) {
   }
 }
 
-// Function get points around an ellipse
+// Function to get points around an ellipse
 void Fish::get_ellipse_points(float cx, float cy, float rx, float ry, int segments, std::vector<PVector>& points) {
   points.clear(); // Clear the vector to store new points
   for (int i = 0; i <= segments; ++i) {
@@ -79,6 +90,7 @@ void Fish::get_ellipse_points(float cx, float cy, float rx, float ry, int segmen
   }
 }
 
+// Function to draw fin as ellipse at transformed position
 void Fish::draw_fin(float posX, float posY, float rotation, float width, float height) {
   // Apply transformations
   PVector origin = {0,0};
@@ -93,48 +105,26 @@ void Fish::draw_fin(float posX, float posY, float rotation, float width, float h
 // Function to compute tail width
 float Fish::get_tail_width(int i, float headToTail) {
   if (i < 12) {
-    return 0.05f * headToTail * (i - 8) * (i - 8);
+    return 1.5f * headToTail * (i - 8) * (i - 8) / 4.0f;
   }
-  return fmaxf(-0.5f, fminf(0.5f, headToTail));
+  return fmaxf(-13.0f, fminf(13.0f, headToTail));
 }
 
-// Function to draw a curve using triangle fan
+// Function to draw the curve using a triangle fan
 void Fish::draw_curve(const std::vector<PVector>& points) {
-  const int segments = 7; // Adjust segments as needed
+    if (points.size() < 3) return; // Need at least 3 points to form a triangle
 
-  if (points.size() < 2) return; // Not enough points to draw a curve
+    // First point is the center of the fan
+    PVector center = points[0];
 
-  float theta = 2 * M_PI / float(segments);
-  float cos_theta = cosf(theta);
-  float sin_theta = sinf(theta);
+    for (size_t i = 1; i < points.size() - 1; ++i) {
+        PVector v1 = center;
+        PVector v2 = points[i];
+        PVector v3 = points[i + 1];
 
-  for (size_t i = 0; i < points.size() - 1; ++i) {
-    PVector start = points[i];
-    PVector end = points[i + 1];
-
-    float dx = end.x - start.x;
-    float dy = end.y - start.y;
-    float length = sqrtf(dx * dx + dy * dy);
-    float angle = atan2f(dy, dx);
-
-    float x = length / 2; // Initial x offset
-    float y = 0; // Initial y offset
-
-    for (int j = 0; j < segments; ++j) {
-      float next_x = cos_theta * x - sin_theta * y;
-      float next_y = sin_theta * x + cos_theta * y;
-
-      PVector v1 = { start.x, start.y };
-      PVector v2 = { start.x + x * cosf(angle), start.y + x * sinf(angle) };
-      PVector v3 = { end.x + next_x * cosf(angle), end.y + next_y * sinf(angle) };
-
-      rdpq_triangle(&TRIFMT_FILL, &v1.x, &v2.x, &v3.x);
-      triCount++;
-
-      x = next_x;
-      y = next_y;
+        rdpq_triangle(&TRIFMT_FILL, &v1.x, &v2.x, &v3.x);
+        triCount++;
     }
-  }
 }
 
 // Function to draw a line segment of certain thickness using two triangles
@@ -176,9 +166,12 @@ void Fish::draw_line(float x1, float y1, float x2, float y2, float thickness) {
     triCount += 2;
 }
 
-// Function to draw a Bézier curve using line segments
+// Function to draw a Bézier curve using line segments and returns the curve as a point 
 void Fish::draw_bezier_curve(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments) {
   std::vector<PVector> curvePoints;
+
+  // Flush previous curve points
+  curvePoints.clear();  
 
   // Compute Bézier curve points
   for (int i = 0; i <= segments; ++i) {
@@ -203,9 +196,67 @@ void Fish::draw_bezier_curve(const PVector& p0, const PVector& p1, const PVector
     draw_line(p1.x, p1.y, p2.x, p2.y , 1.0f);
   }
 
-  curvePoints.clear();  
 }
 
+
+// Function to fill area between 2 Bézier curves using triangles
+void Fish::fill_between_beziers(const std::vector<PVector>& curve1, const std::vector<PVector>& curve2) {
+  size_t size = std::min(curve1.size(), curve2.size());
+  for (size_t i = 0; i < size - 1; ++i) {
+      float v1[] = { curve1[i].x, curve1[i].y };
+      float v2[] = { curve1[i + 1].x, curve1[i + 1].y };
+      float v3[] = { curve2[i].x, curve2[i].y };
+      float v4[] = { curve2[i + 1].x, curve2[i + 1].y };
+
+      // Draw two triangles to fill the quad
+      rdpq_triangle(&TRIFMT_FILL, v1, v2, v3);
+      rdpq_triangle(&TRIFMT_FILL, v2, v3, v4);
+      triCount += 2;
+  }
+}
+
+// Function to draw a filled shape between 2 Bézier curves
+void Fish::draw_filled_beziers(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, 
+                               const PVector& q0, const PVector& q1, const PVector& q2, const PVector& q3, 
+                               int segments) {
+    std::vector<PVector> upper_curve;
+    std::vector<PVector> lower_curve;
+
+    // Generate points for the upper Bézier curve
+    for (int i = 0; i <= segments; ++i) {
+        float t = float(i) / float(segments);
+        float u = 1 - t;
+        float tt = t * t;
+        float uu = u * u;
+        float uuu = uu * u;
+        float ttt = tt * t;
+
+        PVector p = { uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+                      uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y };
+        upper_curve.push_back(p);
+    }
+
+    // Generate points for the lower Bézier curve
+    for (int i = 0; i <= segments; ++i) {
+        float t = float(i) / float(segments);
+        float u = 1 - t;
+        float tt = t * t;
+        float uu = u * u;
+        float uuu = uu * u;
+        float ttt = tt * t;
+
+        PVector q = { uuu * q0.x + 3 * uu * t * q1.x + 3 * u * tt * q2.x + ttt * q3.x,
+                      uuu * q0.y + 3 * uu * t * q1.y + 3 * u * tt * q2.y + ttt * q3.y };
+        lower_curve.push_back(q);
+    }
+
+    // Fill the area between the two curves
+    fill_between_beziers(lower_curve, upper_curve);
+    lower_curve.clear();
+    upper_curve.clear();
+}
+
+// Function to check ear clipping, An "ear" is a triangle formed by three consecutive vertices in a polygon that does not contain any other vertices of the polygon inside it.
 bool Fish::is_ear(const std::vector<PVector>& polygon, int u, int v, int w, const std::vector<int>& V) {
   const PVector& A = polygon[V[u]];
   const PVector& B = polygon[V[v]];
@@ -227,8 +278,8 @@ bool Fish::is_ear(const std::vector<PVector>& polygon, int u, int v, int w, cons
   return true;
 }
 
+// A simple ear clipping algorithm for triangulation
 void Fish::triangulate_polygon(const std::vector<PVector>& polygon, std::vector<PVector>& triangles) {
-  // A simple ear clipping algorithm for triangulation
   std::vector<int> V(polygon.size());
   for (size_t i = 0; i < polygon.size(); ++i) {
     V[i] = i;
@@ -270,6 +321,7 @@ void Fish::triangulate_polygon(const std::vector<PVector>& polygon, std::vector<
   }
 }
 
+// Function to draw a Bézier curve using line segments, then fill shape with triangles. Note the base will always be a straight line.
 void Fish::draw_filled_bezier_shape(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments) {
   std::vector<PVector> curvePoints;
 
@@ -309,6 +361,7 @@ void Fish::draw_filled_bezier_shape(const PVector& p0, const PVector& p1, const 
   triangles.clear();
 }
 
+// Function to draw caudal fin by transforming points based on width
 void Fish::draw_tail(const std::vector<PVector>& j, const std::vector<float>& a, float headToTail) {
   std::vector<PVector> bottomPoints;
   std::vector<PVector> topPoints;
@@ -339,7 +392,7 @@ void Fish::draw_tail(const std::vector<PVector>& j, const std::vector<float>& a,
 PVector* vertices;
 void Fish::draw_body() {
   size_t vertex_count = 0;
-  size_t max_vertices = spine.joints.size(); // Adjust this as needed
+  size_t max_vertices = spine.joints.size() + 4; // Adjust this as needed
   vertices = (PVector*)malloc(max_vertices * sizeof(PVector));
   //debugf("%u\n", max_vertices);
     
@@ -409,6 +462,7 @@ void Fish::draw_body() {
     }
 
     get_ellipse_points(getPosX(i, 0, 0), getPosY(i, 0, 0), getBodyWidth(i), getBodyWidth(i), 14, current_points);
+    
 
     if (!previous_points.empty()) {
       // Calculate centers for previous and current points
@@ -538,9 +592,23 @@ void Fish::display() {
   PVector j3 = {j[3].x + cosf(a[3] + M_PI/2) * headToMid2 * 8,
                 j[3].y + sinf(a[3] + M_PI/2) * headToMid2 * 8,};
 
-  draw_bezier_curve(j[5], j4, j3, j[2], 7); // Draw outside curve
+  draw_filled_beziers(
+    j[5], j4, j3, j[2], // upper curve
+    j[2], j[3], j[4], j[5], // lower curve
+    7 // segments for each
+  );
 
-  draw_bezier_curve(j[2], j[3], j[4], j[5], 5); // Draw base curve
+  /*
+    The draw filled beziers function always seems to overdraw the lower curve,
+    so draw another shape with the body color on top of the first to achieve
+    desired visual effect.
+  */
+  rdpq_set_prim_color(bodyColor);
+  draw_filled_beziers(
+    j[5], j[4], j[3], j[2],
+    j[2], j[3], j[4], j[5],
+    5
+  );
 
   // === END DORSAL FIN ===
 
@@ -562,6 +630,6 @@ void Fish::display() {
   a.clear();
 
   //debugf("%u\n", triCount);
-  triCount = 0;
+  //triCount = 0;
 }
 
