@@ -28,6 +28,7 @@ N64_CXXFLAGS += -mno-check-zero-division \
 
 SRC = ProcAnim.cpp \
       Chain.cpp \
+	  Fish.cpp \
       PVector.cpp \
       Snake.cpp \
       Utils.cpp

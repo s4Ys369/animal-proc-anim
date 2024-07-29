@@ -34,3 +34,17 @@ float constrainAngle(float angle, float anchor, float constraint) {
 
     return simplifyAngle(anchor + constraint);
 }
+
+// Function to apply deadzone to a joystick axis input
+float apply_deadzone(float value) {
+  if (std::abs(value) < DEADZONE) {
+      return 0.0f; // Within deadzone, treat as zero
+  } else {
+    // Remap the value outside the deadzone
+    if (value > 0) {
+        return (value - DEADZONE) / (1.0f - DEADZONE);
+    } else {
+      return (value + DEADZONE) / (1.0f - DEADZONE);
+    }
+  }
+}

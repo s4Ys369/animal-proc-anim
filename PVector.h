@@ -19,6 +19,9 @@ public:
     PVector& setMag(float newMag);
     PVector copy() const;
     static PVector scale(const PVector& center, const PVector& point, float scale);
+    static PVector translate(PVector p, float dx, float dy);
+    static PVector rotate(PVector p, float angle);
+    static PVector transform(const PVector& point, float angle, float width);
 };
 
 #endif // PVECTOR_H

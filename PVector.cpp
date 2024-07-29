@@ -56,3 +56,27 @@ PVector PVector::scale(const PVector& center, const PVector& point, float scale)
     float dy = point.y - center.y;
     return PVector(center.x + dx * scale, center.y + dy * scale);
 }
+
+PVector PVector::translate(PVector p, float dx, float dy) {
+    p.x += dx;
+    p.y += dy;
+    return p;
+}
+
+PVector PVector::rotate(PVector p, float angle) {
+    float s = sinf(angle);
+    float c = cosf(angle);
+    float xnew = p.x * c - p.y * s;
+    float ynew = p.x * s + p.y * c;
+    p.x = xnew;
+    p.y = ynew;
+    return p;
+}
+
+// Function to get the X and Y position with a transformation applied
+PVector PVector::transform(const PVector& point, float angle, float width) {
+    PVector transformed;
+    transformed.x = point.x + cosf(angle) * width;
+    transformed.y = point.y + sinf(angle) * width;
+    return transformed;
+}

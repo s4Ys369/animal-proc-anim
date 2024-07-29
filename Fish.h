@@ -22,7 +22,13 @@ private:
     float getPosY(int i, float angleOffset, float lengthOffset);
     void draw_ellipse(float cx, float cy, float rx, float ry);
     void get_ellipse_points(float cx, float cy, float rx, float ry, int segments, std::vector<PVector>& points);
-    void draw_pectoral_fin(float posX, float posY, float rotation, float width, float height);
+    void draw_fin(float posX, float posY, float rotation, float width, float height);
+    float get_tail_width(int i, float headToTail);
+    void draw_curve(const std::vector<PVector>& points);
+    void draw_line(float x1, float y1, float x2, float y2, float thickness);
+    void draw_bezier_curve(const PVector& p0, const PVector& p1, const PVector& p2, const PVector& p3, int segments);
+    void draw_tail(const std::vector<PVector>& j, const std::vector<float>& a, float headToTail);
+    void draw_body();
 };
 
 #endif // FISH_H

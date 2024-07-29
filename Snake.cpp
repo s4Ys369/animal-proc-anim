@@ -6,23 +6,7 @@
 // Wiggly lil dude
 Snake::Snake(PVector origin)
     : spine(origin, 16, 16, M_PI / 8),
-      bodyWidth{4.5, 7, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1} {}
-      
-const float DEADZONE = 0.5f; // Define the deadzone threshold
-
-// Function to apply deadzone to a joystick axis input
-float apply_deadzone(float value) {
-  if (std::abs(value) < DEADZONE) {
-      return 0.0f; // Within deadzone, treat as zero
-  } else {
-    // Remap the value outside the deadzone
-    if (value > 0) {
-        return (value - DEADZONE) / (1.0f - DEADZONE);
-    } else {
-      return (value + DEADZONE) / (1.0f - DEADZONE);
-    }
-  }
-}
+      bodyWidth{4.5f, 7, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1} {}
 
 void Snake::resolve(float mouseX, float mouseY) {
 

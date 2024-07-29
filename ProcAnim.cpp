@@ -1,16 +1,18 @@
 #include <libdragon.h>
 #include "Chain.h"
+#include "Fish.h"
 #include "Snake.h"
 #include "Utils.h"
 
 // Global variables
-//Fish* fish;
+Fish* fish;
 Snake* snake;
 //Lizard* lizard;
 int animal;
 float mouseX = 0;
 float mouseY = 0;
 surface_t disp;
+Chain* debugSpine;
 
 // Initialize the environment
 void setup() {
@@ -32,10 +34,11 @@ void setup() {
 
   // Initialize animals
   snake = new Snake(PVector(160, 120)); // Centered on a 320x240 screen
-  //fish = new Fish(PVector(160, 120));  
+  fish = new Fish(PVector(160, 120));  
   //lizard = new Lizard(PVector(160, 120));
 
   animal = 0;
+  debugSpine = NULL;
 }
 
 // Main rendering function
@@ -45,10 +48,12 @@ void draw() {
     case 0:
       snake->resolve(mouseX, mouseY);
       snake->draw_snake_shape();
+      debugSpine = &snake->spine;
       break;
     case 1:
-      //fish->resolve();
-      //fish->display();
+      fish->resolve(mouseX, mouseY);
+      fish->display();
+      debugSpine = &fish->spine;
       break;
     case 2:
       //lizard->resolve();
@@ -91,7 +96,7 @@ int main() {
 
     draw();
     if(keysDown.b){
-      snake->spine.display();
+      debugSpine->display();
     }
 
     rdpq_text_printf(NULL, FONT_BUILTIN_DEBUG_MONO, 20, 220, "FPS: %.2f", display_get_fps());
