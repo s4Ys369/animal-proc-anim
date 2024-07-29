@@ -1,9 +1,6 @@
 BUILD_DIR = build
-T3D_DIR=$(HOME)/t3d
-T3D_INST=$(shell realpath $(T3D_DIR))
 
 include $(N64_INST)/include/n64.mk
-include $(T3D_INST)/t3d.mk
 
 PROJECT_NAME = animal-proc-anim
 
